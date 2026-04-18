@@ -164,7 +164,7 @@ export default function App() {
   const activeIncidents = state.incidents.filter((i) => i.status !== 'resolved').length;
 
   return (
-    <div className="flex flex-col w-full h-full bg-clean-bg text-clean-ink font-clean-sans overflow-hidden">
+    <div className="flex min-h-screen w-full flex-col bg-clean-bg text-clean-ink font-clean-sans overflow-x-hidden xl:h-screen xl:overflow-hidden">
       {pendingIncident && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center bg-black/45 px-4">
           <div className="w-full max-w-md rounded-2xl border border-clean-border bg-clean-surface p-6 shadow-2xl">
@@ -212,9 +212,9 @@ export default function App() {
         </div>
       )}
 
-      <div className="fixed top-20 right-6 z-[2000] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-4 right-4 left-4 z-[2000] flex flex-col gap-2 pointer-events-none sm:left-auto sm:top-6 sm:right-6">
         {visibleNotifs.map(n => (
-          <div key={n.id} className="bg-clean-success text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 animate-in slide-in-from-right-8 fade-in fade-out duration-300 pointer-events-auto">
+          <div key={n.id} className="bg-clean-success text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 animate-in slide-in-from-right-8 fade-in fade-out duration-300 pointer-events-auto sm:max-w-md">
             <div className="flex items-center gap-3">
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium text-sm">{n.message}</span>
@@ -229,23 +229,24 @@ export default function App() {
         ))}
       </div>
 
-      <header className="h-[64px] bg-clean-surface border-b border-clean-border flex items-center justify-between px-6 z-50 shrink-0">
-        <div className="font-extrabold text-[20px] tracking-tight flex items-center gap-2">
+      <header className="bg-clean-surface border-b border-clean-border z-50 shrink-0">
+        <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="font-extrabold text-[18px] tracking-tight flex items-center gap-2 sm:text-[20px]">
           LIFELINE<span className="text-clean-primary">DISPATCH</span>
         </div>
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <button
             onClick={handleUseLocation}
             disabled={isLoadingLoc}
-            className="flex items-center gap-2 bg-clean-surface border border-clean-border px-3 py-1.5 rounded text-sm font-bold text-clean-ink hover:bg-clean-bg transition-colors"
+            className="flex w-full items-center justify-center gap-2 bg-clean-surface border border-clean-border px-3 py-2 rounded text-sm font-bold text-clean-ink hover:bg-clean-bg transition-colors sm:w-auto"
           >
             <Crosshair className={`w-4 h-4 ${isLoadingLoc ? 'animate-spin text-clean-secondary' : 'text-clean-primary'}`} />
             {isLoadingLoc ? 'LOCATING...' : 'REPORT MY LOCATION'}
           </button>
 
-          <div className="h-6 w-px bg-clean-border mx-2"></div>
+          <div className="hidden h-6 w-px bg-clean-border mx-2 lg:block"></div>
 
-          <div className="flex gap-6 text-[13px] font-medium text-clean-ink items-center">
+          <div className="grid grid-cols-1 gap-2 text-[12px] font-medium text-clean-ink sm:grid-cols-3 sm:gap-x-4 sm:text-[13px] lg:flex lg:gap-6 lg:items-center">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div>
               Network: PAN-INDIA
@@ -260,7 +261,7 @@ export default function App() {
 
               <button
                 onClick={resetState}
-                className="ml-4 p-1 rounded-sm text-clean-ink-muted hover:text-clean-ink hover:bg-clean-bg transition-colors"
+                className="ml-2 p-1 rounded-sm text-clean-ink-muted hover:text-clean-ink hover:bg-clean-bg transition-colors sm:ml-4"
                 title="Reset Demo"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -268,10 +269,44 @@ export default function App() {
             </div>
           </div>
         </div>
+        </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-[300px_1fr_280px] h-[calc(100%-64px)]">
-        <aside className="bg-clean-surface border-r border-clean-border flex flex-col overflow-hidden">
+      <main className="flex-1 grid grid-cols-1 xl:min-h-0 xl:grid-cols-[minmax(260px,300px)_minmax(0,1fr)_minmax(260px,280px)]">
+        <section className="relative order-1 map-container-bg flex min-h-[320px] flex-col sm:min-h-[420px] lg:min-h-[520px] xl:order-2 xl:min-h-0">
+          <div className="flex-1 relative z-0 min-h-[320px] xl:min-h-0">
+            <MapComponent
+              hospitals={state.hospitals}
+              ambulances={state.ambulances}
+              incidents={state.incidents}
+              onMapClick={handleMapClick}
+            />
+          </div>
+
+          {showInstructions && (
+            <div className="absolute bottom-4 left-4 right-4 bg-clean-ink text-white p-3 px-4 rounded font-clean-mono text-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.2)] z-[1000] pointer-events-auto sm:left-6 sm:right-auto sm:max-w-sm sm:px-5 sm:text-[13px]">
+              <div className="flex justify-between items-start mb-1">
+                <span className="text-clean-success font-bold font-clean-sans text-xs uppercase tracking-wider">Instructions</span>
+                <button
+                  onClick={() => setShowInstructions(false)}
+                  className="text-white/60 hover:text-white transition-colors p-1 -mt-1 -mr-2"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="whitespace-pre-wrap leading-relaxed opacity-90">
+                &gt; REPORT OR CLICK A LOCATION
+                <br/>&gt; CHOOSE LOW, MEDIUM, OR HIGH
+                <br/>&gt; DISPATCH NETWORK COVERS INDIA
+                <br/>&gt; SYSTEM ASSIGNS NEAREST AMBULANCE
+                <br/>&gt; AVOIDS FULL HOSPITALS
+                <br/>&gt; UPDATES IN REAL-TIME
+              </div>
+            </div>
+          )}
+        </section>
+
+        <aside className="order-2 bg-clean-surface border-t border-clean-border flex flex-col overflow-hidden xl:order-1 xl:border-t-0 xl:border-r">
           <div className="p-4 border-b border-clean-border text-[12px] uppercase tracking-wider font-bold text-clean-ink-muted flex justify-between items-center shrink-0">
             Active Emergencies
             <span>{activeIncidents.toString().padStart(2, '0')} Live</span>
@@ -337,40 +372,7 @@ export default function App() {
           </div>
         </aside>
 
-        <section className="relative map-container-bg flex flex-col">
-          <div className="flex-1 relative z-0">
-            <MapComponent
-              hospitals={state.hospitals}
-              ambulances={state.ambulances}
-              incidents={state.incidents}
-              onMapClick={handleMapClick}
-            />
-          </div>
-
-          {showInstructions && (
-            <div className="absolute bottom-6 left-6 bg-clean-ink text-white p-3 px-5 rounded font-clean-mono text-[13px] shadow-[0_8px_24px_rgba(0,0,0,0.2)] z-[1000] max-w-sm pointer-events-auto">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-clean-success font-bold font-clean-sans text-xs uppercase tracking-wider">Instructions</span>
-                <button
-                  onClick={() => setShowInstructions(false)}
-                  className="text-white/60 hover:text-white transition-colors p-1 -mt-1 -mr-2"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="whitespace-pre-wrap leading-relaxed opacity-90">
-                &gt; REPORT OR CLICK A LOCATION
-                <br/>&gt; CHOOSE LOW, MEDIUM, OR HIGH
-                <br/>&gt; DISPATCH NETWORK COVERS INDIA
-                <br/>&gt; SYSTEM ASSIGNS NEAREST AMBULANCE
-                <br/>&gt; AVOIDS FULL HOSPITALS
-                <br/>&gt; UPDATES IN REAL-TIME
-              </div>
-            </div>
-          )}
-        </section>
-
-        <aside className="bg-clean-surface border-l border-clean-border flex flex-col overflow-hidden">
+        <aside className="order-3 bg-clean-surface border-t border-clean-border flex flex-col overflow-hidden xl:border-t-0 xl:border-l">
           <div className="p-4 border-b border-clean-border text-[12px] uppercase tracking-wider font-bold text-clean-ink-muted flex justify-between items-center shrink-0">
             Hospital Capacity
             <span>Real-time</span>
