@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --color-clean-bg: #F8F9FA;
+  --color-clean-surface: #FFFFFF;
+  --color-clean-ink: #1A1C1E;
+  --color-clean-ink-muted: #6C757D;
+  --color-clean-primary: #D90429;
+  --color-clean-secondary: #3A86FF;
+  --color-clean-success: #38B000;
+  --color-clean-border: #E9ECEF;
+  --font-clean-sans: "Helvetica Neue", Arial, sans-serif;
+  --font-clean-mono: "Courier New", Courier, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-clean-sans);
+  background-color: var(--color-clean-bg);
+  color: var(--color-clean-ink);
+}
+
+.map-container-bg {
+  background: #EEEFF1;
+  background-image: 
+    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}

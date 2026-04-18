@@ -1,0 +1,6 @@
+{
+  "name": "Lifeline Dispatch",
+  "description": "Live map with algorithm that assigns nearest free ambulance to incidents.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": []
+}
