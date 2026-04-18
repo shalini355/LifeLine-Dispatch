@@ -2,7 +2,17 @@ import { useEffect, useState, useRef } from 'react';
 import { MapPin, Navigation, RotateCcw, Crosshair, CheckCircle, Clock, X } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 
-type Hospital = { id: string; name: string; lat: number; lng: number; capacity: number; currentLoad: number };
+type Hospital = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  region: 'North' | 'South' | 'East' | 'West' | 'Central' | 'Northeast';
+  lat: number;
+  lng: number;
+  capacity: number;
+  currentLoad: number;
+};
 type Ambulance = {
   id: string;
   name: string;
@@ -79,15 +89,13 @@ export default function App() {
     };
   }, []);
 
-  // Update visible notifications when state changes
   useEffect(() => {
     if (state.notifications && state.notifications.length > 0) {
       const newNotifs = state.notifications.filter(n => !seenNotifs.current.has(n.id));
       if (newNotifs.length > 0) {
         newNotifs.forEach(n => seenNotifs.current.add(n.id));
         setVisibleNotifs(prev => [...prev, ...newNotifs]);
-        
-        // Auto-remove notifications after 5 seconds
+
         newNotifs.forEach(n => {
           setTimeout(() => {
             setVisibleNotifs(prev => prev.filter(p => p.id !== n.id));
@@ -203,8 +211,7 @@ export default function App() {
           </div>
         </div>
       )}
-      
-      {/* Toast Notifications */}
+
       <div className="fixed top-20 right-6 z-[2000] flex flex-col gap-2 pointer-events-none">
         {visibleNotifs.map(n => (
           <div key={n.id} className="bg-clean-success text-white px-4 py-3 rounded shadow-lg flex items-center justify-between gap-4 animate-in slide-in-from-right-8 fade-in fade-out duration-300 pointer-events-auto">
@@ -212,7 +219,7 @@ export default function App() {
               <CheckCircle className="w-5 h-5" />
               <span className="font-medium text-sm">{n.message}</span>
             </div>
-            <button 
+            <button
               onClick={() => dismissNotif(n.id)}
               className="hover:bg-black/20 p-1 rounded-full transition-colors"
             >
@@ -222,14 +229,12 @@ export default function App() {
         ))}
       </div>
 
-      {/* Header */}
       <header className="h-[64px] bg-clean-surface border-b border-clean-border flex items-center justify-between px-6 z-50 shrink-0">
         <div className="font-extrabold text-[20px] tracking-tight flex items-center gap-2">
           LIFELINE<span className="text-clean-primary">DISPATCH</span>
         </div>
         <div className="flex gap-4 items-center">
-          
-          <button 
+          <button
             onClick={handleUseLocation}
             disabled={isLoadingLoc}
             className="flex items-center gap-2 bg-clean-surface border border-clean-border px-3 py-1.5 rounded text-sm font-bold text-clean-ink hover:bg-clean-bg transition-colors"
@@ -242,18 +247,18 @@ export default function App() {
 
           <div className="flex gap-6 text-[13px] font-medium text-clean-ink items-center">
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div> 
-              Network: Delhi NCR
+              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div>
+              Network: PAN-INDIA
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div> 
+              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div>
               Latency: 42ms
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div> 
+              <div className="w-2 h-2 rounded-full border border-0 bg-clean-success"></div>
               Dispatcher: Admin_01
-              
-              <button 
+
+              <button
                 onClick={resetState}
                 className="ml-4 p-1 rounded-sm text-clean-ink-muted hover:text-clean-ink hover:bg-clean-bg transition-colors"
                 title="Reset Demo"
@@ -266,14 +271,12 @@ export default function App() {
       </header>
 
       <main className="flex-1 grid grid-cols-[300px_1fr_280px] h-[calc(100%-64px)]">
-        
-        {/* Left Panel */}
         <aside className="bg-clean-surface border-r border-clean-border flex flex-col overflow-hidden">
           <div className="p-4 border-b border-clean-border text-[12px] uppercase tracking-wider font-bold text-clean-ink-muted flex justify-between items-center shrink-0">
             Active Emergencies
             <span>{activeIncidents.toString().padStart(2, '0')} Live</span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {state.incidents.filter((i) => i.status !== 'resolved').length === 0 ? (
               <div className="p-4 text-[13px] text-clean-ink-muted italic">
@@ -281,8 +284,8 @@ export default function App() {
               </div>
             ) : (
               state.incidents.filter((i) => i.status !== 'resolved').map((i) => (
-                <div 
-                  key={i.id} 
+                <div
+                  key={i.id}
                   className={`p-4 border-b border-clean-border cursor-pointer transition-colors ${
                     i.status === 'assigned' ? 'bg-[#FFF0F1] border-l-4 border-l-clean-primary' : 'hover:bg-clean-bg border-l-4 border-l-transparent'
                   }`}
@@ -294,7 +297,7 @@ export default function App() {
                     </div>
                     {i.severity && (
                       <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black ${
-                        i.severity === 'critical' ? 'bg-[#D90429] text-white' : 
+                        i.severity === 'critical' ? 'bg-[#D90429] text-white' :
                         i.severity === 'high' ? 'bg-orange-500 text-white' :
                         i.severity === 'medium' ? 'bg-yellow-400 text-black' :
                         'bg-clean-success text-white'
@@ -334,22 +337,21 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Center Map */}
         <section className="relative map-container-bg flex flex-col">
           <div className="flex-1 relative z-0">
-            <MapComponent 
-              hospitals={state.hospitals} 
-              ambulances={state.ambulances} 
-              incidents={state.incidents} 
+            <MapComponent
+              hospitals={state.hospitals}
+              ambulances={state.ambulances}
+              incidents={state.incidents}
               onMapClick={handleMapClick}
             />
           </div>
-          
+
           {showInstructions && (
             <div className="absolute bottom-6 left-6 bg-clean-ink text-white p-3 px-5 rounded font-clean-mono text-[13px] shadow-[0_8px_24px_rgba(0,0,0,0.2)] z-[1000] max-w-sm pointer-events-auto">
               <div className="flex justify-between items-start mb-1">
                 <span className="text-clean-success font-bold font-clean-sans text-xs uppercase tracking-wider">Instructions</span>
-                <button 
+                <button
                   onClick={() => setShowInstructions(false)}
                   className="text-white/60 hover:text-white transition-colors p-1 -mt-1 -mr-2"
                 >
@@ -359,6 +361,7 @@ export default function App() {
               <div className="whitespace-pre-wrap leading-relaxed opacity-90">
                 &gt; REPORT OR CLICK A LOCATION
                 <br/>&gt; CHOOSE LOW, MEDIUM, OR HIGH
+                <br/>&gt; DISPATCH NETWORK COVERS INDIA
                 <br/>&gt; SYSTEM ASSIGNS NEAREST AMBULANCE
                 <br/>&gt; AVOIDS FULL HOSPITALS
                 <br/>&gt; UPDATES IN REAL-TIME
@@ -367,28 +370,29 @@ export default function App() {
           )}
         </section>
 
-        {/* Right Panel */}
         <aside className="bg-clean-surface border-l border-clean-border flex flex-col overflow-hidden">
           <div className="p-4 border-b border-clean-border text-[12px] uppercase tracking-wider font-bold text-clean-ink-muted flex justify-between items-center shrink-0">
             Hospital Capacity
             <span>Real-time</span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {state.hospitals.map((h) => (
               <div key={h.id} className="p-4 border-b border-clean-border hover:bg-clean-bg transition-colors cursor-pointer">
                 <div className="font-bold text-[14px] mb-1">{h.name}</div>
+                <div className="mb-2 text-[11px] uppercase tracking-wide text-clean-ink-muted">
+                  {h.city}, {h.state} | {h.region}
+                </div>
                 <div className="text-[12px] text-clean-ink-muted flex justify-between mb-2">
                   <span>Beds: {h.capacity - h.currentLoad} Available</span>
                   <span style={{color: h.currentLoad >= h.capacity ? 'var(--color-clean-primary)' : 'var(--color-clean-success)'}}>
                     {h.currentLoad >= h.capacity ? 'Critical Load' : 'Load OK'}
                   </span>
                 </div>
-                {/* Progress bar */}
                 <div className="w-full h-1 bg-clean-border rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full rounded-full transition-all duration-500"
-                    style={{ 
+                    style={{
                       width: `${Math.min(100, (h.currentLoad / h.capacity) * 100)}%`,
                       backgroundColor: h.currentLoad >= h.capacity ? 'var(--color-clean-primary)' : 'var(--color-clean-success)'
                     }}
@@ -415,11 +419,8 @@ export default function App() {
               <span className="font-bold">0</span>
             </div>
           </div>
-
         </aside>
-
       </main>
     </div>
   );
 }
-

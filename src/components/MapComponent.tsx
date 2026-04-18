@@ -1,17 +1,52 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
+import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Custom Icons
-const createCustomIcon = (bgColor: string, shape: 'circle' | 'square' = 'circle', isPulsing: boolean = false, iconText: string = '') => L.divIcon({
-  html: `<div class="w-full h-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.2)] flex items-center justify-center text-[10px] text-white font-black ${shape === 'circle' ? 'rounded-full' : 'rounded-sm'} ${isPulsing ? 'animate-pulse' : ''}" style="background-color: ${bgColor};">
+type Region = 'North' | 'South' | 'East' | 'West' | 'Central' | 'Northeast';
+type Hospital = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  region: Region;
+  lat: number;
+  lng: number;
+  capacity: number;
+  currentLoad: number;
+};
+type Ambulance = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  status: 'free' | 'busy' | 'returning';
+  target?: { lat: number; lng: number };
+  route?: Array<{ lat: number; lng: number }>;
+  incidentId?: string;
+};
+type Incident = {
+  id: string;
+  lat: number;
+  lng: number;
+  status: 'unassigned' | 'assigned' | 'resolved';
+};
+
+const createCustomIcon = (
+  bgColor: string,
+  shape: 'circle' | 'square' = 'circle',
+  isPulsing = false,
+  iconText = ''
+) =>
+  L.divIcon({
+    html: `<div class="w-full h-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.2)] flex items-center justify-center text-[10px] text-white font-black ${shape === 'circle' ? 'rounded-full' : 'rounded-sm'} ${isPulsing ? 'animate-pulse' : ''}" style="background-color: ${bgColor};">
     ${iconText}
   </div>`,
-  className: 'custom-leaflet-icon',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-  popupAnchor: [0, -10]
-});
+    className: 'custom-leaflet-icon',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
+  });
 
 const hospitalIcon = createCustomIcon('var(--color-clean-success)', 'square', false, 'H');
 const hospitalFullIcon = createCustomIcon('var(--color-clean-primary)', 'square', false, 'H');
@@ -21,82 +56,77 @@ const incidentIcon = createCustomIcon('var(--color-clean-primary)', 'circle', tr
 
 function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+    click(event) {
+      onMapClick(event.latlng.lat, event.latlng.lng);
     },
   });
+
   return null;
 }
 
 interface MapProps {
-  hospitals: Array<{ id: string; name: string; lat: number; lng: number; capacity: number; currentLoad: number }>;
-  ambulances: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    status: 'free' | 'busy' | 'returning';
-    target?: { lat: number; lng: number };
-    route?: Array<{ lat: number; lng: number }>;
-    incidentId?: string;
-  }>;
-  incidents: Array<{ id: string; lat: number; lng: number; status: 'unassigned' | 'assigned' | 'resolved' }>;
+  hospitals: Hospital[];
+  ambulances: Ambulance[];
+  incidents: Incident[];
   onMapClick: (lat: number, lng: number) => void;
 }
 
 export default function MapComponent({ hospitals, ambulances, incidents, onMapClick }: MapProps) {
-  const center = { lat: 28.6139, lng: 77.2090 };
+  const center: LatLngTuple = [22.9734, 78.6569];
 
   return (
     <div className="w-full h-full relative z-0">
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={center} zoom={5} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         <MapEvents onMapClick={onMapClick} />
-        
-        {hospitals.map((h: any) => (
-          <Marker 
-            key={h.id} 
-            position={[h.lat, h.lng]} 
-            icon={h.currentLoad >= h.capacity ? hospitalFullIcon : hospitalIcon}
+
+        {hospitals.map((hospital) => (
+          <Marker
+            key={hospital.id}
+            position={[hospital.lat, hospital.lng]}
+            icon={hospital.currentLoad >= hospital.capacity ? hospitalFullIcon : hospitalIcon}
           >
             <Popup>
-              <strong>{h.name}</strong><br />
-              Capacity: {h.currentLoad} / {h.capacity}
+              <strong>{hospital.name}</strong><br />
+              {hospital.city}, {hospital.state}<br />
+              Region: {hospital.region}<br />
+              Capacity: {hospital.currentLoad} / {hospital.capacity}
             </Popup>
           </Marker>
         ))}
 
-        {ambulances.map((a: any) => (
-          <Marker 
-            key={a.id} 
-            position={[a.lat, a.lng]} 
-            icon={a.status === 'free' ? ambulanceFreeIcon : ambulanceBusyIcon}
+        {ambulances.map((ambulance) => (
+          <Marker
+            key={ambulance.id}
+            position={[ambulance.lat, ambulance.lng]}
+            icon={ambulance.status === 'free' ? ambulanceFreeIcon : ambulanceBusyIcon}
           >
             <Popup>
-              <strong>{a.name}</strong><br />
-              Status: {a.status}
+              <strong>{ambulance.name}</strong><br />
+              Status: {ambulance.status}
             </Popup>
           </Marker>
         ))}
 
-        {/* Draw tracking lines for busy ambulances */}
-        {ambulances.filter((a: any) => a.target).map((a: any) => {
-          const positions = [[a.lat, a.lng]];
-          if (a.route && a.route.length > 0) {
-            positions.push(...a.route.map((p: any) => [p.lat, p.lng]));
-          } else {
-            positions.push([a.target.lat, a.target.lng]);
+        {ambulances.filter((ambulance) => ambulance.target).map((ambulance) => {
+          const positions: LatLngTuple[] = [[ambulance.lat, ambulance.lng]];
+
+          if (ambulance.route && ambulance.route.length > 0) {
+            positions.push(...ambulance.route.map((point): LatLngTuple => [point.lat, point.lng]));
+          } else if (ambulance.target) {
+            positions.push([ambulance.target.lat, ambulance.target.lng]);
           }
+
           return (
             <Polyline
-              key={`route-${a.id}`}
-              positions={positions as [number, number][]}
+              key={`route-${ambulance.id}`}
+              positions={positions}
               pathOptions={{
-                color: a.incidentId ? '#D90429' : '#3A86FF', // Red when heading to incident, Blue when heading to hospital
-                dashArray: a.route ? undefined : '8, 8', // solid if road route available
+                color: ambulance.incidentId ? '#D90429' : '#3A86FF',
+                dashArray: ambulance.route ? undefined : '8, 8',
                 weight: 4,
                 opacity: 0.8
               }}
@@ -104,20 +134,19 @@ export default function MapComponent({ hospitals, ambulances, incidents, onMapCl
           );
         })}
 
-        {incidents.filter(i => i.status !== 'resolved').map((i: any) => (
-          <Marker 
-            key={i.id} 
-            position={[i.lat, i.lng]} 
+        {incidents.filter((incident) => incident.status !== 'resolved').map((incident) => (
+          <Marker
+            key={incident.id}
+            position={[incident.lat, incident.lng]}
             icon={incidentIcon}
           >
             <Popup>
               Emergency<br />
-              Status: {i.status}
+              Status: {incident.status}
             </Popup>
           </Marker>
         ))}
       </MapContainer>
-      
     </div>
   );
 }
