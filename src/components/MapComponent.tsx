@@ -1,15 +1,6 @@
-import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// Fix for default Leaflet icon not showing correctly in some setups
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
 
 // Custom Icons
 const createCustomIcon = (bgColor: string, shape: 'circle' | 'square' = 'circle', isPulsing: boolean = false, iconText: string = '') => L.divIcon({
@@ -38,9 +29,18 @@ function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => v
 }
 
 interface MapProps {
-  hospitals: any[];
-  ambulances: any[];
-  incidents: any[];
+  hospitals: Array<{ id: string; name: string; lat: number; lng: number; capacity: number; currentLoad: number }>;
+  ambulances: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    status: 'free' | 'busy' | 'returning';
+    target?: { lat: number; lng: number };
+    route?: Array<{ lat: number; lng: number }>;
+    incidentId?: string;
+  }>;
+  incidents: Array<{ id: string; lat: number; lng: number; status: 'unassigned' | 'assigned' | 'resolved' }>;
   onMapClick: (lat: number, lng: number) => void;
 }
 

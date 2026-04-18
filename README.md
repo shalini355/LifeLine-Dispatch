@@ -2,19 +2,33 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# LifeLine Dispatch
 
-This contains everything you need to run your app locally.
+This project is a local dispatch simulation built with React, Vite, Express, and Leaflet. The backend serves the frontend and simulates ambulance assignment, routing, hospital load, and live incident updates.
 
-View your app in AI Studio: https://ai.studio/apps/a68ee93b-84da-47f5-b661-e41db5729e7e
+## Prerequisites
 
-## Run Locally
+- Node.js 20+ (Node 22 recommended)
+- npm
 
-**Prerequisites:**  Node.js
-
+## Run locally
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Start the app:
    `npm run dev`
+3. Open:
+   `http://localhost:3000`
+
+## Available scripts
+
+- `npm run dev` starts the Express server and Vite middleware in development mode.
+- `npm run build` creates a production frontend build in `dist/`.
+- `npm run preview` previews the Vite production build.
+- `npm run lint` runs TypeScript type-checking.
+- `npm run clean` removes the `dist/` directory in a cross-platform way.
+
+## Notes
+
+- No Gemini API key is required for the current app flow.
+- If the live OSRM routing service is unavailable, the simulation now falls back to a direct path so dispatch still works.

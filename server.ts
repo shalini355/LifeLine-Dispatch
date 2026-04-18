@@ -8,6 +8,7 @@ type Hospital = Point & { id: string; name: string; capacity: number; currentLoa
 type Ambulance = Point & { id: string; name: string; status: 'free' | 'busy' | 'returning'; incidentId?: string; hospitalId?: string; target?: Point; eta?: number; route?: Point[] };
 type Incident = Point & { id: string; status: 'unassigned' | 'assigned' | 'resolved'; severity: string; assignedAmbulance?: string; etaMin?: number };
 type NotificationMessage = { id: string; type: 'success' | 'info'; message: string; timestamp: number };
+type Severity = 'low' | 'medium' | 'high' | 'critical';
 
 // Initial State (Delhi area)
 const CENTER: Point = { lat: 28.6139, lng: 77.2090 };
@@ -30,6 +31,7 @@ let ambulances: Ambulance[] = Array.from({ length: 8 }).map((_, i) => ({
 }));
 
 let incidents: Incident[] = [];
+const VALID_SEVERITIES: Severity[] = ['low', 'medium', 'high', 'critical'];
 
 // Helper distance in km
 function getDist(p1: Point, p2: Point) {
@@ -46,18 +48,42 @@ function getDist(p1: Point, p2: Point) {
 
 // Fetch Real-world Routing
 async function fetchOSRMRoute(start: Point, end: Point): Promise<Point[]> {
+  const fallbackRoute = [end];
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+
   try {
     const url = `http://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) {
+      return fallbackRoute;
+    }
+
     const data = await res.json();
     if (data && data.routes && data.routes.length > 0) {
       const coords = data.routes[0].geometry.coordinates;
       return coords.map((c: any) => ({ lat: c[1], lng: c[0] }));
     }
-  } catch (e) {
-    console.error("OSRM fetch error");
+  } catch {
+    // Fall back to a direct line when the routing service is unavailable.
+  } finally {
+    clearTimeout(timeout);
   }
-  return [end]; // fallback
+
+  return fallbackRoute;
+}
+
+function isValidPoint(point: Partial<Point>): point is Point {
+  return (
+    typeof point.lat === 'number' &&
+    typeof point.lng === 'number' &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng) &&
+    point.lat >= -90 &&
+    point.lat <= 90 &&
+    point.lng >= -180 &&
+    point.lng <= 180
+  );
 }
 
 function handleArrival(a: Ambulance) {
@@ -219,7 +245,7 @@ setInterval(() => {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -230,12 +256,18 @@ async function startServer() {
 
   app.post("/api/incident", (req, res) => {
     const { lat, lng, severity } = req.body;
+    if (!isValidPoint({ lat, lng })) {
+      res.status(400).json({ error: 'Invalid incident coordinates.' });
+      return;
+    }
+
+    const normalizedSeverity: Severity = VALID_SEVERITIES.includes(severity) ? severity : 'high';
     const newIncident: Incident = {
       id: `inc-${Date.now()}`,
       lat,
       lng,
       status: 'unassigned',
-      severity: severity || 'high'
+      severity: normalizedSeverity
     };
     incidents.push(newIncident);
     res.json(newIncident);
@@ -243,6 +275,7 @@ async function startServer() {
   
   app.post("/api/reset", (req, res) => {
     incidents = [];
+    notifications = [];
     hospitals.forEach(h => h.currentLoad = Math.floor(Math.random() * 3));
     ambulances.forEach((a, i) => {
       a.status = 'free';
@@ -250,6 +283,7 @@ async function startServer() {
       a.hospitalId = undefined;
       a.target = undefined;
       a.route = undefined;
+      a.eta = undefined;
       a.lat = CENTER.lat + (Math.random() - 0.5) * 0.1;
       a.lng = CENTER.lng + (Math.random() - 0.5) * 0.1;
     });

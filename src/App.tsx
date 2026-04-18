@@ -2,14 +2,45 @@ import { useEffect, useState, useRef } from 'react';
 import { MapPin, Navigation, RotateCcw, Crosshair, CheckCircle, Clock, X } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 
+type Hospital = { id: string; name: string; lat: number; lng: number; capacity: number; currentLoad: number };
+type Ambulance = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  status: 'free' | 'busy' | 'returning';
+  target?: { lat: number; lng: number };
+  route?: Array<{ lat: number; lng: number }>;
+  incidentId?: string;
+};
+type Incident = {
+  id: string;
+  lat: number;
+  lng: number;
+  status: 'unassigned' | 'assigned' | 'resolved';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  assignedAmbulance?: string;
+  etaMin?: number;
+};
+type NotificationMessage = { id: string; message: string };
+type AppState = {
+  hospitals: Hospital[];
+  ambulances: Ambulance[];
+  incidents: Incident[];
+  notifications: NotificationMessage[];
+};
+type Severity = 'low' | 'medium' | 'high';
+type PendingIncident = { lat: number; lng: number; source: 'map' | 'location' } | null;
+
 export default function App() {
-  const [state, setState] = useState<{hospitals: any[], ambulances: any[], incidents: any[], notifications: any[]}>({
+  const [state, setState] = useState<AppState>({
     hospitals: [], ambulances: [], incidents: [], notifications: []
   });
 
   const [isLoadingLoc, setIsLoadingLoc] = useState(false);
-  const [visibleNotifs, setVisibleNotifs] = useState<any[]>([]);
+  const [visibleNotifs, setVisibleNotifs] = useState<NotificationMessage[]>([]);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [pendingIncident, setPendingIncident] = useState<PendingIncident>(null);
   const seenNotifs = useRef(new Set<string>());
 
   const dismissNotif = (id: string) => {
@@ -20,10 +51,10 @@ export default function App() {
     try {
       const res = await fetch('/api/state');
       if (res.ok) {
-        const data = await res.json();
+        const data: AppState = await res.json();
         setState(data);
       }
-    } catch (e) {
+    } catch {
       // Suppress "Failed to fetch" console errors during server restarts
     }
   };
@@ -66,17 +97,25 @@ export default function App() {
     }
   }, [state.notifications]);
 
-  const handleMapClick = async (lat: number, lng: number) => {
-    const severities = ['low', 'medium', 'high', 'critical'];
-    const randomSeverity = severities[Math.floor(Math.random() * severities.length)];
+  const submitIncident = async (lat: number, lng: number, severity: Severity) => {
     try {
       await fetch('/api/incident', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, severity: randomSeverity })
+        body: JSON.stringify({ lat, lng, severity })
       });
       fetchData();
-    } catch(e) {}
+    } catch {}
+  };
+
+  const handleMapClick = (lat: number, lng: number) => {
+    setPendingIncident({ lat, lng, source: 'map' });
+  };
+
+  const handleSeveritySelect = async (severity: Severity) => {
+    if (!pendingIncident) return;
+    await submitIncident(pendingIncident.lat, pendingIncident.lng, severity);
+    setPendingIncident(null);
   };
 
   const handleUseLocation = () => {
@@ -90,12 +129,13 @@ export default function App() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setIsLoadingLoc(false);
-        // For demo purposes, we will use their coordinates but shift them slightly out of bounds
-        // if they are not in Bangalore, to keep the map localized they might just show up 
-        // wherever they are. Actually, best to just send exact coords. 
-        handleMapClick(position.coords.latitude, position.coords.longitude);
+        setPendingIncident({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          source: 'location'
+        });
       },
-      (err) => {
+      () => {
         setIsLoadingLoc(false);
         alert('Unable to retrieve your location');
       }
@@ -108,15 +148,61 @@ export default function App() {
       fetchData();
       setVisibleNotifs([]);
       seenNotifs.current.clear();
-    } catch(e) {}
+    } catch {}
   };
 
-  const freeAmbulances = state.ambulances.filter((a: any) => a.status === 'free').length;
-  const busyAmbulances = state.ambulances.filter((a: any) => a.status !== 'free').length;
-  const activeIncidents = state.incidents.filter((i: any) => i.status !== 'resolved').length;
+  const freeAmbulances = state.ambulances.filter((a) => a.status === 'free').length;
+  const busyAmbulances = state.ambulances.filter((a) => a.status !== 'free').length;
+  const activeIncidents = state.incidents.filter((i) => i.status !== 'resolved').length;
 
   return (
     <div className="flex flex-col w-full h-full bg-clean-bg text-clean-ink font-clean-sans overflow-hidden">
+      {pendingIncident && (
+        <div className="fixed inset-0 z-[2500] flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-clean-border bg-clean-surface p-6 shadow-2xl">
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-clean-ink-muted">
+              Incident Level
+            </div>
+            <h2 className="mb-2 text-xl font-extrabold text-clean-ink">
+              Select emergency severity
+            </h2>
+            <p className="mb-5 text-sm text-clean-ink-muted">
+              {pendingIncident.source === 'location'
+                ? 'We found your location. Choose the incident level before dispatching help.'
+                : 'Location selected on the map. Choose the incident level before dispatching help.'}
+            </p>
+            <div className="grid gap-3">
+              <button
+                onClick={() => handleSeveritySelect('high')}
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100"
+              >
+                <div className="text-sm font-extrabold uppercase text-red-700">High</div>
+                <div className="text-xs text-red-900/80">Life-threatening or urgent emergency.</div>
+              </button>
+              <button
+                onClick={() => handleSeveritySelect('medium')}
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left transition-colors hover:bg-amber-100"
+              >
+                <div className="text-sm font-extrabold uppercase text-amber-700">Medium</div>
+                <div className="text-xs text-amber-900/80">Serious condition that needs fast response.</div>
+              </button>
+              <button
+                onClick={() => handleSeveritySelect('low')}
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left transition-colors hover:bg-emerald-100"
+              >
+                <div className="text-sm font-extrabold uppercase text-emerald-700">Low</div>
+                <div className="text-xs text-emerald-900/80">Stable case that still requires assistance.</div>
+              </button>
+            </div>
+            <button
+              onClick={() => setPendingIncident(null)}
+              className="mt-4 w-full rounded-xl border border-clean-border px-4 py-3 text-sm font-bold text-clean-ink transition-colors hover:bg-clean-bg"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Toast Notifications */}
       <div className="fixed top-20 right-6 z-[2000] flex flex-col gap-2 pointer-events-none">
@@ -189,12 +275,12 @@ export default function App() {
           </div>
           
           <div className="flex-1 overflow-y-auto">
-            {state.incidents.filter((i: any) => i.status !== 'resolved').length === 0 ? (
+            {state.incidents.filter((i) => i.status !== 'resolved').length === 0 ? (
               <div className="p-4 text-[13px] text-clean-ink-muted italic">
                 No active emergencies.
               </div>
             ) : (
-              state.incidents.filter((i: any) => i.status !== 'resolved').map((i: any) => (
+              state.incidents.filter((i) => i.status !== 'resolved').map((i) => (
                 <div 
                   key={i.id} 
                   className={`p-4 border-b border-clean-border cursor-pointer transition-colors ${
@@ -271,7 +357,8 @@ export default function App() {
                 </button>
               </div>
               <div className="whitespace-pre-wrap leading-relaxed opacity-90">
-                &gt; REPORT MY LOCATION TO TRIGGER EMERGENCY
+                &gt; REPORT OR CLICK A LOCATION
+                <br/>&gt; CHOOSE LOW, MEDIUM, OR HIGH
                 <br/>&gt; SYSTEM ASSIGNS NEAREST AMBULANCE
                 <br/>&gt; AVOIDS FULL HOSPITALS
                 <br/>&gt; UPDATES IN REAL-TIME
@@ -288,7 +375,7 @@ export default function App() {
           </div>
           
           <div className="flex-1 overflow-y-auto">
-            {state.hospitals.map((h: any) => (
+            {state.hospitals.map((h) => (
               <div key={h.id} className="p-4 border-b border-clean-border hover:bg-clean-bg transition-colors cursor-pointer">
                 <div className="font-bold text-[14px] mb-1">{h.name}</div>
                 <div className="text-[12px] text-clean-ink-muted flex justify-between mb-2">
